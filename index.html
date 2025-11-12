@@ -35,11 +35,20 @@
   .logo:empty{ display:none }
   .logo img{ max-width:100%; max-height:100%; object-fit:contain }
   .t1{ font-size:20px; font-weight:800; letter-spacing:.02em }
-  .inv-title{ font-size:30px; letter-spacing:.04em; font-weight:900; color:var(--ink) }
+
+  /* smaller title */
+  .inv-title{ font-size:24px; letter-spacing:.04em; font-weight:900; color:var(--ink) }
 
   .divider{ height:3px; border-radius:3px; margin:12px 0 10px; background:linear-gradient(90deg,#2f2f2f 0 15%, #c7c9cc 15% 100%); }
-  .meta-mini{ margin:0 0 14px; color:#374151; font-size:13px }
+  .meta-mini{ margin:0 0 10px; color:#374151; font-size:13px }
   .meta-mini strong{ font-weight:800 }
+
+  /* sort pill */
+  .sort-row{ display:flex; justify-content:flex-end; margin:6px 0 14px; }
+  .pill{
+    background:#e5e7eb; color:#374151; padding:8px 14px; border-radius:9999px;
+    font-size:13px; display:inline-block;
+  }
 
   table{ width:100%; border-collapse:collapse }
   thead th{
@@ -69,7 +78,7 @@
     <header class="header">
       <div class="brand">
         <div class="logo" id="logo_box"></div>
-        <div class="t1" id="brand_name">Company</div>
+        <div class="t1" id="brand_name"></div>
       </div>
       <div class="right"><div class="inv-title" id="page_title">EQUIPMENT LOG</div></div>
     </header>
@@ -77,6 +86,10 @@
 
     <div class="meta-mini">
       <strong>Log created on:</strong> <span id="log_dt"></span>
+    </div>
+
+    <div class="sort-row">
+      <span class="pill">Sort by Return Date in descending order</span>
     </div>
 
     <table>
@@ -102,15 +115,17 @@
   const qp = new URLSearchParams(location.search);
   const get = (k,d='') => qp.get(k) ?? d;
 
-  // Brand + title
+  // Brand + title (hide brand name if absent)
   (function(){
     const name=(get('my_Co_name','')||'').trim();
-    document.getElementById('brand_name').textContent = name || 'Equipment Log';
+    const el=document.getElementById('brand_name');
+    if(name){ el.textContent=name; el.style.display=''; }
+    else { el.textContent=''; el.style.display='none'; }
     const title=(get('title_report','')||'').trim();
     document.getElementById('page_title').textContent = title || 'EQUIPMENT LOG';
   })();
 
-  // Logo
+  // Logo (hide if absent)
   (function(){
     const box=document.getElementById('logo_box');
     const url=(get('my_Co_logo','')||'').trim();
@@ -145,7 +160,24 @@
     });
   }
 
+  // Robust date parser (handles ISO and "Month D, YYYY")
+  function ts(dateStr){
+    if(!dateStr) return -Infinity;
+    const d=new Date(dateStr);
+    if(!isNaN(d)) return d.getTime();
+    // try DD/MM/YYYY quick fallback
+    const m=dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m){
+      const [_,dd,mm,yy]=m;
+      return new Date(Number(yy), Number(mm)-1, Number(dd)).getTime();
+    }
+    return -Infinity;
+  }
+
   const data = parse(get('items',''));
+
+  // Sort by Return Date DESC
+  data.sort((a,b)=> ts(b.ret) - ts(a.ret));
 
   // Render
   (function(){
